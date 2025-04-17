@@ -34,33 +34,43 @@ jobs:
         run: |
           input_file="${{ steps.paths.outputs.input_file }}"
           output_file="${{ steps.paths.outputs.output_file }}"
-          start_marker="${{ steps.paths.outputs.start_marker }}"
-          end_marker="${{ steps.paths.outputs.end_marker }}"
+          # These markers should NOT have extra quotes around them here
+          start_marker="# 手工定义的 Direct 列表"
+          end_marker="# 手工定义的 Proxy 列表"
 
-          echo "Processing $input_file..."
+          echo "Processing $input_file to include start marker and transform rules..."
           if [ ! -f "$input_file" ]; then
             echo "Error: Input file $input_file not found!"
             exit 1
           fi
 
-          # Use awk to extract lines between markers, then sed to reformat
-          # awk: Set flag 'p' when start_marker is found, unset when end_marker is found. Print if 'p' is true. Skip the marker lines themselves.
-          # sed: Remove the last comma and everything after it (e.g., ',Reject')
+          # awk script:
+          # 1. When start marker is found, print it as is, set flag 'p', skip to next line.
+          # 2. When end marker is found, unset flag 'p'.
+          # 3. When flag 'p' is set (meaning we are between markers):
+          #    a. Use sub() to remove the last comma and everything after it from the current line ($0).
+          #    b. Print the modified line.
           awk -v start="$start_marker" -v end="$end_marker" '
-            $0 == end { p=0 }
-            p && $0 != start { print }
-            $0 == start { p=1 }
-          ' "$input_file" | sed 's/,[^,]*$//' > "$output_file"
+          $0 == start { print; p=1; next }
+          $0 == end { p=0 }
+          p {
+            sub(/,[^,]*$/, "");
+            print
+          }
+          ' "$input_file" > "$output_file"
 
-          # Check if the output file was created and is not empty
-          if [ -s "$output_file" ]; then
+          # Check if the output file was created by awk.
+          # Since we intend to commit even if only the header is present,
+          # we just check for file existence.
+          if [ -f "$output_file" ]; then
             echo "Successfully generated $output_file"
+            # Set changes_made to true because we regenerated the file
+            # This ensures the commit step runs (as per your previous request)
             echo "changes_made=true" >> $GITHUB_OUTPUT
           else
-            echo "Warning: No lines extracted or output file is empty."
+            echo "Error: awk command failed to create $output_file."
             echo "changes_made=false" >> $GITHUB_OUTPUT
-            # Optionally remove the empty file if created
-            # rm -f "$output_file"
+            exit 1 # Fail the job if the file wasn't created
           fi
 
       - name: Configure Git
