@@ -1,40 +1,41 @@
-name: Copy TOP500_WHITE_AD.conf
+    name: Copy TOP500_WHITE_AD.conf
 
-on:
-  schedule:
-    - cron: '0 21 * * *'  # 5 AM HKT is UTC+8, so 5 AM is 21 UTC.
-  workflow_dispatch: # Enable manual triggering
+    on:
+      schedule:
+        - cron: '0 21 * * *'  # 5 AM HKT is UTC+8, so 5 AM is 21 UTC.
+      workflow_dispatch: # Enable manual triggering
 
-jobs:
-  copy_file:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source Repo
-        uses: actions/checkout@v4
-        with:
-          repository: pandit-psw/SR-Rule
-          ref: main # Or the branch where the file is located
-          path: source_repo
+    jobs:
+      copy_file:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout Source Repo
+            uses: actions/checkout@v4
+            with:
+              repository: pandit-psw/SR-Rule
+              ref: main # Or the branch where the file is located
+              path: source_repo
 
-      - name: Checkout Destination Repo
-        uses: actions/checkout@v4
-        with:
-          path: destination_repo
+          - name: Checkout Destination Repo
+            uses: actions/checkout@v4
+            with:
+              path: destination_repo
 
-      - name: Copy File
-        run: |
-          cp source_repo/TOP500_WHITE_AD.conf destination_repo/TOP500_WHITE_AD.conf
+          - name: Copy File
+            run: |
+              cp source_repo/TOP500_WHITE_AD.conf destination_repo/TOP500_WHITE_AD.conf
 
-      - name: Commit and Push
-        run: |
-          cd destination_repo
-          git config --local user.email "github-actions@github.com"
-          git config --local user.name "GitHub Actions"
-          git add TOP500_WHITE_AD.conf
-          git diff --staged --exit-code # Will fail if no changes
-          git commit -m "Update TOP500_WHITE_AD.conf" || echo "No changes to commit"
-          # Use a PAT for authentication
-          git push origin main -f
-          #git push origin main # Or the branch you want to push to
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          - name: Commit and Push
+            run: |
+              cd destination_repo
+              git config --local user.email "github-actions@github.com"
+              git config --local user.name "GitHub Actions"
+              git add TOP500_WHITE_AD.conf
+              git diff --staged --exit-code # Will fail if no changes
+              git commit -m "Update TOP500_WHITE_AD.conf" || echo "No changes to commit"
+              # Use a PAT for authentication
+              git push "https://${{ github.actor }}:${{ secrets.REPO_ACCESS_TOKEN }}@github.com/pandit-psw/OpenClash-Rule.git" main -f
+            env:
+              #GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Remove this line
+              
+    
