@@ -1,0 +1,29 @@
+name: Sync TOP500 AD Blocklist
+
+on:
+  schedule:
+    - cron: '0 21 * * *' # Runs every day at 5:00 AM Hong Kong time (UTC+8)
+  workflow_dispatch:
+
+jobs:
+  sync_file:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v3
+
+      - name: Download file from source repository
+        run: |
+          curl -o TOP500_WHITE_AD.conf https://raw.githubusercontent.com/pandit-psw/SR-Rule/main/TOP500_WHITE_AD.conf
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add TOP500_WHITE_AD.conf
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update TOP500_WHITE_AD.conf from pandit-psw/SR-Rule"
+            git push origin main
+          fi
