@@ -1,104 +1,115 @@
-name: Generate TOP500 Direct List
+name: Generate TOP500 Direct List (Combined)
 
 on:
-  # Schedule to run every day at 6:00 AM Hong Kong Time (UTC+8)
-  # GitHub Actions schedules use UTC. 6 AM HKT is 10 PM UTC the previous day.
   schedule:
-    - cron: '0 22 * * *' # 22:00 UTC is 6:00 HKT
+    # Run daily at 6:00 AM Hong Kong/Taiwan Time (UTC+8 -> 22:00 UTC previous day)
+    - cron: '0 22 * * *'
+  workflow_dispatch: # Allow manual trigger
 
-  # Allow manual triggering from the Actions tab
-  workflow_dispatch:
-
-# Set permissions for the workflow to be able to push changes
 permissions:
-  contents: write # Required to push changes back to the repository
+  contents: write # Allow writing repository content
 
 jobs:
-  generate_list:
-    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+  generate_list_job: # Renamed job slightly
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Use the standard checkout action
+        uses: actions/checkout@v4
 
-      - name: Set file paths
+      # Updated: Define markers/patterns for both sections
+      - name: Set file paths and markers
         id: paths
         run: |
-          echo "input_file=TMP_Source/TOP500_WHITE_AD.conf" >> $GITHUB_OUTPUT
-          echo "output_file=TMP_Source/TOP500_Direct.list" >> $GITHUB_OUTPUT
-          # Corrected: Removed the single quotes inside the double quotes
-          echo "start_marker=# 手工定义的 Direct 列表" >> $GITHUB_OUTPUT
-          echo "end_marker=# 手工定义的 Proxy 列表" >> $GITHUB_OUTPUT
-          
-      - name: Extract and transform list
+          echo "input_file=TMP_Sources/TOP500_WHITE_AD.conf" >> $GITHUB_OUTPUT
+          echo "output_file=TMP_Sources/TOP500_Direct.list" >> $GITHUB_OUTPUT
+          # Section 1 markers
+          echo "start1=# 手工定义的 Direct 列表" >> $GITHUB_OUTPUT
+          echo "end1=# 手工定义的 Proxy 列表" >> $GITHUB_OUTPUT
+          # Section 2 markers/patterns
+          echo "start2_pattern=# top500 direct list update time:" >> $GITHUB_OUTPUT
+          echo "end2_pattern=RULE-SET" >> $GITHUB_OUTPUT
+
+      # Updated: awk script now handles two sections
+      - name: Extract and transform list (Combined Sections)
         id: generate
         run: |
           input_file="${{ steps.paths.outputs.input_file }}"
           output_file="${{ steps.paths.outputs.output_file }}"
-          # These markers should NOT have extra quotes around them here
-          start_marker="# 手工定义的 Direct 列表"
-          end_marker="# 手工定义的 Proxy 列表"
+          # Section 1 markers
+          start1="${{ steps.paths.outputs.start1 }}"
+          end1="${{ steps.paths.outputs.end1 }}"
+          # Section 2 markers/patterns
+          start2_pattern="${{ steps.paths.outputs.start2_pattern }}"
+          end2_pattern="${{ steps.paths.outputs.end2_pattern }}"
 
-          echo "Processing $input_file to include start marker and transform rules..."
+          echo "Processing $input_file for $output_file (Combined Sections)..."
           if [ ! -f "$input_file" ]; then
             echo "Error: Input file $input_file not found!"
             exit 1
           fi
 
-          # awk script:
-          # 1. When start marker is found, print it as is, set flag 'p', skip to next line.
-          # 2. When end marker is found, unset flag 'p'.
-          # 3. When flag 'p' is set (meaning we are between markers):
-          #    a. Use sub() to remove the last comma and everything after it from the current line ($0).
-          #    b. Print the modified line.
-          awk -v start="$start_marker" -v end="$end_marker" '
-          $0 == start { print; p=1; next }
-          $0 == end { p=0 }
-          p {
-            sub(/,[^,]*$/, "");
-            print
-          }
+          # awk script for combining two sections:
+          # Uses flags p1 and p2. Checks end markers first, then processes active sections, then checks start markers.
+          awk -v s1="$start1" -v e1="$end1" -v s2p="$start2_pattern" -v e2p="$end2_pattern" '
+            # --- Check End Markers First ---
+            # Turn off p1 if end1 is matched exactly
+            $0 == e1 { p1 = 0 }
+            # Turn off p2 if line starts with end2 pattern
+            index($0, e2p) == 1 { p2 = 0 }
+
+            # --- Process if Flags Active (before potentially starting a new section) ---
+            # Process Section 1 line (only if p1 is active)
+            p1 {
+              sub(/,[^,]*$/, ""); # Apply transformation
+              print
+              next # Done with this line, skip other checks
+            }
+            # Process Section 2 line (only if p2 is active)
+            p2 {
+              sub(/,[^,]*$/, ""); # Apply transformation
+              print
+              next # Done with this line, skip other checks
+            }
+
+            # --- Check Start Markers Last ---
+            # Start Section 1 (only if not already processing a section)
+            $0 == s1 { print; p1 = 1; next } # Print start line verbatim, set flag, skip
+            # Start Section 2 (only if not already processing a section)
+            index($0, s2p) == 1 { print; p2 = 1; next } # Print start line verbatim, set flag, skip
+
+            # Lines not matching any start/end or active section flags are ignored
           ' "$input_file" > "$output_file"
 
           # Check if the output file was created by awk.
-          # Since we intend to commit even if only the header is present,
-          # we just check for file existence.
           if [ -f "$output_file" ]; then
-            echo "Successfully generated $output_file"
-            # Set changes_made to true because we regenerated the file
-            # This ensures the commit step runs (as per your previous request)
-            echo "changes_made=true" >> $GITHUB_OUTPUT
+            echo "Successfully generated $output_file with combined sections"
+            echo "changes_made=true" >> $GITHUB_OUTPUT # Ensure commit step runs
           else
             echo "Error: awk command failed to create $output_file."
-            echo "changes_made=false" >> $GITHUB_OUTPUT
+            # echo "changes_made=false" >> $GITHUB_OUTPUT # Not needed if exiting
             exit 1 # Fail the job if the file wasn't created
           fi
 
       - name: Configure Git
-        # Only run if changes were potentially made
-        if: steps.generate.outputs.changes_made == 'true'
+        # Run if generate step succeeded (didn't exit)
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit and push changes
-        # Only run if the generation step potentially produced a file
-        # (We keep this outer 'if' because if awk failed entirely or produced nothing,
-        # 'changes_made' would be false, and we wouldn't run this step)
-        if: steps.generate.outputs.changes_made == 'true'
+        # Run if generate step succeeded (didn't exit)
         run: |
-          output_file="${{ steps.paths.outputs.output_file }}"
+          output_file="${{ steps.paths.outputs.output_file }}" # Still only one output file
 
           echo "Staging $output_file for commit..."
-          git add "$output_file" # Stage the file regardless of changes
+          git add "$output_file"
 
-          echo "Committing changes/update for $output_file..."
-          # This commit message will appear even if the file content is the same
-          git commit -m "Automated update: Generate $output_file"
+          echo "Committing update for $output_file..."
+          # Commit will happen even if content is unchanged
+          git commit -m "Automated update: Generate $output_file (Combined)" # Updated commit message slightly
 
-          # Push changes using the provided PAT
           echo "Pushing commit..."
-          # The push command requires the correct token scope (contents: write)
           git push https://x-access-token:${{ secrets.REPO_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
 
         env:
-           REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }} # Make the secret available
+           REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
