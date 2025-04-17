@@ -1,4 +1,4 @@
-name: Update From Johnshall
+name: Update From SR-Rule
 
 on:
   schedule:
