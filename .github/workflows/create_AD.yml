@@ -34,22 +34,25 @@ jobs:
         run: |
           input_file="${{ steps.paths.outputs.input_file }}"
           output_file="${{ steps.paths.outputs.output_file }}"
-          start_marker="${{ steps.paths.outputs.start_marker }}"
-          end_marker="${{ steps.paths.outputs.end_marker }}"
+          # Correctly get the marker PREFIXES defined in the 'paths' step
+          start_marker_prefix="${{ steps.paths.outputs.start_marker_prefix }}"
+          end_marker_prefix="${{ steps.paths.outputs.end_marker_prefix }}"
 
           echo "Processing $input_file..."
+          echo "Using start marker prefix: '${start_marker_prefix}'" # Added logging
+          echo "Using end marker prefix: '${end_marker_prefix}'"     # Added logging
           if [ ! -f "$input_file" ]; then
             echo "Error: Input file $input_file not found!"
             exit 1
           fi
 
-          # Use awk to extract lines between markers, then sed to reformat
-          # awk: Set flag 'p' when start_marker is found, unset when end_marker is found. Print if 'p' is true. Skip the marker lines themselves.
-          # sed: Remove the last comma and everything after it (e.g., ',Reject')
-          awk -v start="$start_marker" -v end="$end_marker" '
-            $0 == end { p=0 }
-            p && $0 != start { print }
-            $0 == start { p=1 }
+          # Use the CORRECT awk logic for matching PREFIXES
+          # Pass the prefixes to awk using -v
+          # Use regex matching (~) anchored to the start of the line (^)
+          awk -v start="^${start_marker_prefix}" -v end="^${end_marker_prefix}" '
+            $0 ~ end { p=0; next }    # If line starts with end marker prefix, stop printing, skip line
+            $0 ~ start { p=1; next }  # If line starts with start marker prefix, start printing *from next line*, skip line
+            p { print }               # If flag p is set, print the line
           ' "$input_file" | sed 's/,[^,]*$//' > "$output_file"
 
           # Check if the output file was created and is not empty
@@ -57,10 +60,10 @@ jobs:
             echo "Successfully generated $output_file"
             echo "changes_made=true" >> $GITHUB_OUTPUT
           else
-            echo "Warning: No lines extracted or output file is empty."
+            echo "Warning: No lines extracted or output file is empty. Check markers in $input_file."
+            echo "Start marker prefix expected: '${start_marker_prefix}'"
+            echo "End marker prefix expected: '${end_marker_prefix}'"
             echo "changes_made=false" >> $GITHUB_OUTPUT
-            # Optionally remove the empty file if created
-            # rm -f "$output_file"
           fi
 
       - name: Configure Git
