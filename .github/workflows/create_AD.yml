@@ -26,8 +26,8 @@ jobs:
           echo "input_file=TMP_Source/TOP500_WHITE_AD.conf" >> $GITHUB_OUTPUT
           echo "output_file=TMP_Source/TOP500_AD.list" >> $GITHUB_OUTPUT
           # Corrected: Removed the single quotes inside the double quotes
-          echo "start_pattern=# adblock rules refresh time:" >> $GITHUB_OUTPUT
-          echo "end_pattern=# 手工定义的 Proxy 列表" >> $GITHUB_OUTPUT
+          echo "start_marker_prefix=# adblock rules refresh time:" >> $GITHUB_OUTPUT
+          echo "end_marker_prefix=# 手工定义的 Proxy 列表" >> $GITHUB_OUTPUT
           
       - name: Extract and transform list
         id: generate
