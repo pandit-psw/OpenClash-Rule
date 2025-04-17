@@ -71,25 +71,24 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit and push changes
-        # Only run if changes were potentially made
+        # Only run if the generation step potentially produced a file
+        # (We keep this outer 'if' because if awk failed entirely or produced nothing,
+        # 'changes_made' would be false, and we wouldn't run this step)
         if: steps.generate.outputs.changes_made == 'true'
         run: |
           output_file="${{ steps.paths.outputs.output_file }}"
 
-          # Check if there are actual changes to commit
-          if git diff --quiet "$output_file"; then
-            echo "No changes detected in $output_file. Nothing to commit."
-            exit 0
-          fi
+          echo "Staging $output_file for commit..."
+          git add "$output_file" # Stage the file regardless of changes
 
-          echo "Committing changes to $output_file..."
-          git add "$output_file"
-          # Use GITHUB_OUTPUT or similar if you want to pass the file path dynamically
+          echo "Committing changes/update for $output_file..."
+          # This commit message will appear even if the file content is the same
           git commit -m "Automated update: Generate $output_file"
 
           # Push changes using the provided PAT
-          # The PAT needs 'repo' scope (or 'contents: write')
+          echo "Pushing commit..."
+          # The push command requires the correct token scope (contents: write)
           git push https://x-access-token:${{ secrets.REPO_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
 
         env:
-           REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }} # Make the secret available as an env var
+           REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }} # Make the secret available
