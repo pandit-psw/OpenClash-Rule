@@ -23,11 +23,12 @@ jobs:
       - name: Set file paths
         id: paths
         run: |
-          echo "input_file=TMP_Source/TOP500_WHITE_AD.conf" >> $GITHUB_OUTPUT
-          echo "output_file=TMP_Source/TOP500_Direct.list" >> $GITHUB_OUTPUT
-          echo "start_marker='# 手工定义的 Direct 列表'" >> $GITHUB_OUTPUT
-          echo "end_marker='# 手工定义的 Proxy 列表'" >> $GITHUB_OUTPUT
-
+          echo "input_file=TMP_Sources/TOP500_WHITE_AD.conf" >> $GITHUB_OUTPUT
+          echo "output_file=TMP_Sources/TOP500_Direct.list" >> $GITHUB_OUTPUT
+          # Corrected: Removed the single quotes inside the double quotes
+          echo "start_marker=# 手工定义的 Direct 列表" >> $GITHUB_OUTPUT
+          echo "end_marker=# 手工定义的 Proxy 列表" >> $GITHUB_OUTPUT
+          
       - name: Extract and transform list
         id: generate
         run: |
