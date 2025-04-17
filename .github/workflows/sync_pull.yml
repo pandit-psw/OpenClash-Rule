@@ -1,27 +1,37 @@
-name: Update Config
+name: Update From Johnshall
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '0 21 * * *' # Runs at 9 PM UTC (5 AM CST during standard time). Adjust for DST if needed.
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
-  update:
+  update-rules:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Git user
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create or Clear TMP_Source directory
+        run: rm -rf TMP_Source && mkdir TMP_Source # This line replaces the existing TMP_Source directory 
+
+      - name: Download specific files
         run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-      - name: Make changes (example - replace with your actual changes)
-        run: |
-          # Assuming you have a file named TOP500_WHITE_AD.conf that you are modifying
-          # Example:
-          echo "Updated content" > TOP500_WHITE_AD.conf
-          git add TOP500_WHITE_AD.conf
-          git commit -m "Update TOP500_WHITE_AD.conf from pandit-psw/SR-Rule"
-      - name: Push changes to OpenClash-Rule repository
-        run: |
-          git remote add target "https://x-access-token:${{ secrets.REPO_ACCESS_TOKEN }}@github.com/pandit-psw/OpenClash-Rule.git"
-          git push target HEAD:SR-Rule
+          # Define the files you want to download with spaces.
+          files_to_download=(
+            "https://raw.githubusercontent.com/pandit-psw/SR-Rule/refs/heads/main/TOP500_WHITE_AD.conf"
+          )
+
+          # Loop through the files and download them using curl
+          for file in "${files_to_download[@]}"; do
+            filename=$(basename "$file") # Extract filename from URL
+            echo "Downloading $file to TMP_Source/$filename..."
+            curl -sSL "$file" -o "TMP_Source/$filename"
+          done
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Updated From SR-Rule
+          branch: main # Or your branch name
+          file_pattern: TMP_Source/* # Only commit files within TMP_Source
