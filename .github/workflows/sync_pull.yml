@@ -1,20 +1,38 @@
+# Workflow name
 name: Update From SR-Rule
 
+# Controls when the workflow will run
 on:
+  # Triggers the workflow on a schedule (at 9 PM UTC)
   schedule:
     - cron: '0 21 * * *' # Runs at 9 PM UTC (5 AM CST during standard time). Adjust for DST if needed.
-  workflow_dispatch: # Allows manual triggering
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  # This workflow contains a single job called "update-rules"
   update-rules:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
+
+    # Grant write permissions to the GITHUB_TOKEN for contents (code)
+    # This is necessary for the git-auto-commit-action to push changes
+    permissions:
+      contents: write # <-- ADD THIS LINE
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3 # Use a specific version for stability
 
+      # Create or clear the temporary directory for downloaded rules
       - name: Create or Clear TMP_Source directory
-        run: rm -rf TMP_Source && mkdir TMP_Source # This line replaces the existing TMP_Source directory 
+        run: rm -rf TMP_Source && mkdir TMP_Source # This line replaces the existing TMP_Source directory
 
+      # Download the rule file(s)
       - name: Download specific files
         run: |
           # Define the files you want to download with spaces.
@@ -26,12 +44,21 @@ jobs:
           for file in "${files_to_download[@]}"; do
             filename=$(basename "$file") # Extract filename from URL
             echo "Downloading $file to TMP_Source/$filename..."
-            curl -sSL "$file" -o "TMP_Source/$filename"
+            # Use curl with -f to fail silently on server errors, -s for silent mode, -S to show errors, -L to follow redirects
+            curl -fsSL "$file" -o "TMP_Source/$filename"
           done
 
+      # Use the git-auto-commit action to commit and push changes
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v4 # Use a specific version
         with:
+          # Message for the commit
           commit_message: Updated From SR-Rule
-          branch: main # Or your branch name
+          # Branch to commit to
+          branch: main # Or your specific branch name
+          # Pattern of files to add and commit
           file_pattern: TMP_Source/* # Only commit files within TMP_Source
+          # Optional: Specify committer and author details if needed
+          # commit_user_name: github-actions[bot] # Default is github-actions[bot]
+          # commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com # Default email
+          # commit_author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com> # Default author is the user triggering the action
