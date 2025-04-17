@@ -2,7 +2,7 @@ name: Sync TOP500_WHITE_AD.conf from SR-Rule
 
 on:
   schedule:
-    - cron: '0 21 * * *'  # Runs daily at 5 AM HKT (9 PM UTC)
+    - cron: '0 21 * * *'  # Runs daily at 5 AM HKT
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
@@ -16,7 +16,8 @@ jobs:
           persist-credentials: false
 
       - name: Download rule file from SR-Rule
-        run: curl -L https://raw.githubusercontent.com/pandit-psw/SR-Rule/main/TOP500_WHITE_AD.conf -o TOP500_WHITE_AD.conf
+        run: |
+          curl -L https://raw.githubusercontent.com/pandit-psw/SR-Rule/main/TOP500_WHITE_AD.conf -o TOP500_WHITE_AD.conf
 
       - name: Commit and push changes if updated
         run: |
