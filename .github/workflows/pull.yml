@@ -1,32 +1,36 @@
-name: Sync TOP500_WHITE_AD.conf from SR-Rule
+name: Copy TOP500_WHITE_AD.conf
 
 on:
   schedule:
-    - cron: '0 21 * * *'  # Runs daily at 5 AM HKT
-  workflow_dispatch:  # Allows manual trigger
+    - cron: '0 21 * * *'  # 5 AM HKT is UTC+8, so 5 AM is 21 UTC.
+  workflow_dispatch: # Enable manual triggering
 
 jobs:
-  sync-file:
+  copy_file:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout OpenClash-Rule repo
+      - name: Checkout Source Repo
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          repository: pandit-psw/SR-Rule
+          ref: main # Or the branch where the file is located
+          path: source_repo
 
-      - name: Download rule file from SR-Rule
+      - name: Checkout Destination Repo
+        uses: actions/checkout@v4
+        with:
+          path: destination_repo
+
+      - name: Copy File
         run: |
-          curl -L https://raw.githubusercontent.com/pandit-psw/SR-Rule/main/TOP500_WHITE_AD.conf -o TOP500_WHITE_AD.conf
+          cp source_repo/TOP500_WHITE_AD.conf destination_repo/TOP500_WHITE_AD.conf
 
-      - name: Commit and push changes if updated
+      - name: Commit and Push
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-
-          if ! git diff --quiet TOP500_WHITE_AD.conf; then
-            git add TOP500_WHITE_AD.conf
-            git commit -m "Auto-sync TOP500_WHITE_AD.conf from SR-Rule"
-            git push
-          else
-            echo "No changes detected."
+          cd destination_repo
+          git config --local user.email "github-actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add TOP500_WHITE_AD.conf
+          git diff --staged --exit-code # Will fail if no changes
+          git commit -m "Update TOP500_WHITE_AD.conf" || echo "No changes to commit"
+          git push origin main # Or the branch you want to push to
