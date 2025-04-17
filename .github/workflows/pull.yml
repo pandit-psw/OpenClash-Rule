@@ -3,7 +3,7 @@ name: Copy TOP500_WHITE_AD.conf
 on:
   schedule:
     - cron: '0 21 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Enable manual triggering
 
 jobs:
   copy_file:
