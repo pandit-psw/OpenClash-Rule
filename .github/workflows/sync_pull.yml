@@ -1,29 +1,27 @@
-name: Sync TOP500 AD Blocklist
+name: Update Config
 
 on:
-  schedule:
-    - cron: '0 21 * * *' # Runs every day at 5:00 AM Hong Kong time (UTC+8)
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  sync_file:
+  update:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout current repository
-        uses: actions/checkout@v3
-
-      - name: Download file from source repository
-        run: |
-          curl -o TOP500_WHITE_AD.conf https://raw.githubusercontent.com/pandit-psw/SR-Rule/main/TOP500_WHITE_AD.conf
-
-      - name: Commit and push changes
+      - uses: actions/checkout@v4
+      - name: Set up Git user
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
+      - name: Make changes (example - replace with your actual changes)
+        run: |
+          # Assuming you have a file named TOP500_WHITE_AD.conf that you are modifying
+          # Example:
+          echo "Updated content" > TOP500_WHITE_AD.conf
           git add TOP500_WHITE_AD.conf
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Update TOP500_WHITE_AD.conf from pandit-psw/SR-Rule"
-            git push origin main
-          fi
+          git commit -m "Update TOP500_WHITE_AD.conf from pandit-psw/SR-Rule"
+      - name: Push changes to OpenClash-Rule repository
+        run: |
+          git remote add target "https://x-access-token:${{ secrets.REPO_ACCESS_TOKEN }}@github.com/pandit-psw/OpenClash-Rule.git"
+          git push target HEAD:SR-Rule
