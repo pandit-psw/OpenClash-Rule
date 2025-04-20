@@ -70,8 +70,8 @@ jobs:
         # Only run if changes were potentially made
         if: steps.generate.outputs.changes_made == 'true'
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name 'Pandit'
+          git config --global user.email 'pandit@panditpan.tk'
 
       - name: Commit and push changes
         # Only run if the generation step potentially produced a file
