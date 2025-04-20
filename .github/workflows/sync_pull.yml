@@ -59,6 +59,6 @@ jobs:
           # Pattern of files to add and commit
           file_pattern: TMP_Source/* # Only commit files within TMP_Source
           # Optional: Specify committer and author details if needed
-          # commit_user_name: github-actions[bot] # Default is github-actions[bot]
-          # commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com # Default email
+          commit_user_name: Pandit # Default is github-actions[bot]
+          commit_user_email: pandit@panditpan.tk # Default email
           # commit_author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com> # Default author is the user triggering the action
